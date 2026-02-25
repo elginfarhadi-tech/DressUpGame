@@ -6,6 +6,7 @@ from pathlib import Path
 
 pygame.init()
 
+#test20260225
 # -----------------------------
 # Window
 # -----------------------------
