@@ -151,7 +151,7 @@ def main_game(player_name):
 
     # Auto-load base lists (used for rendering safety)
     hairs = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("hair*.png"))]
-    clothes = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("clothes*.png"))]
+    dresses = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("dress*.png"))]
     tops = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("top*.png"))]
     pants = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("pants*.png"))]
     shoes = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("shoes*.png"))]
@@ -161,23 +161,37 @@ def main_game(player_name):
     x = (WIDTH - 100) // 2
     y = 0
 
-    hair_index = 0
-    clothes_index = 0
-    top_index = 0
-    pants_index = 0
-    shoes_index = 0
+    hairs_index = None
+    dresses_index = None
+    tops_index = None
+    pants_index = None
+    shoes_index = None
     bg_index = 0
 
+    ''''
     # Clothing mode:
     # "outfit" => draw clothes only
     # "separates" => draw pants + top only
     clothing_mode = "outfit" if len(clothes) > 0 else "separates"
+    '''
 
     last_special = None
 
     # Closet categories (ADD Tops + Pants)
-    categories = ["Hairs", "Cloth", "Tops", "Pants", "Shoes"]
+    categories = ["Hairs", "Dresses", "Tops", "Pants", "Shoes"]
     category_buttons = []
+
+    # Tip variables 
+    tip_text = ""
+    tip_timer = 0
+    tip_color = (255, 100, 100)
+
+    def show_message(text, color=(255, 0, 0), duration=120):
+        nonlocal tip_text, tip_timer, tip_color
+        tip_text = text
+        tip_color = color
+        tip_timer = duration  
+
 
     # reach all assets
     def extract_number(path):
@@ -190,7 +204,7 @@ def main_game(player_name):
     def scan_and_classify():
         categories_dict = {
             "Hairs": [],
-            "Cloth": [],
+            "Dresses": [],
             "Tops": [],
             "Pants": [],
             "Shoes": [],
@@ -201,8 +215,8 @@ def main_game(player_name):
 
             if filename.startswith("hair"):
                 categories_dict["Hairs"].append(file_path)
-            elif filename.startswith("clothes"):
-                categories_dict["Cloth"].append(file_path)
+            elif filename.startswith("dress"):
+                categories_dict["Dresses"].append(file_path)
             elif filename.startswith("top"):
                 categories_dict["Tops"].append(file_path)
             elif filename.startswith("pants"):
@@ -250,14 +264,14 @@ def main_game(player_name):
     clothes_data = load_images(categories_dict)
 
     all_categories = [c for c in categories if c in clothes_data]
-    current_category = all_categories[0] if all_categories else "Cloth"
+    current_category = all_categories[0] if all_categories else "Hairs"
 
     cloth_buttons = []
     max_scroll = 0
-    view_reat = pygame.Rect(20, 80, 300, 450)
+    view_reat = pygame.Rect(20, 80, 350, 450)
 
     # closet background
-    def draw_wardrobe():
+    def draw_closet():
         rect = view_reat
         bg_surface = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
         transparency = 100
@@ -275,11 +289,11 @@ def main_game(player_name):
         category_buttons = []
 
         start_y = 130
-        button_width = 70
+        button_width = 60
         button_height = 30
 
         for i, category in enumerate(categories):
-            x_btn = 60 + i * (button_width + 5)
+            x_btn = 35 + i * (button_width + 5)
 
             category_buttons.append(
                 {
@@ -298,26 +312,61 @@ def main_game(player_name):
 
         items = clothes_data[category]
 
-        start_x = 40
+        start_x = 55
         base_y = 165
         button_width = 80
         button_height = 80
-        margin_x = 10
-        margin_y = 10
+        margin_x = 20
+        margin_y = 20
 
         for i, item in enumerate(items):
             w, h = item["image"].get_size()
 
             # shoes thumbnails: crop bottom area
             if category == "Shoes":
-                start_x_crop = max(0, (w - button_width) // 2)
-                start_y_crop = max(0, h - button_height)
 
+                start_x_crop = (w - button_width) // 2  
+                start_y_crop = h - button_height       
+            
                 thumb = pygame.Surface((button_width, button_height), pygame.SRCALPHA)
-                thumb.fill((0, 0, 0, 0))
-                thumb.blit(item["image"], (0, 0), (start_x_crop, start_y_crop, button_width, button_height))
+                thumb.fill((0, 0, 0, 0)) 
+                thumb.blit(item['image'], (0, 0), (start_x_crop, start_y_crop, button_width, button_height))
+            
+            elif category == "Tops":
+                zoom_factor_tops = 0.3
+                
+                enlarged = pygame.transform.scale(item['image'], 
+                    (int(w * zoom_factor_tops), int(h * zoom_factor_tops)))
+                
+                ew, eh = enlarged.get_size()
+                
+                start_x_crop = (ew - button_width) // 2   
+                start_y_crop = (eh - button_height) // 2  
+                
+                
+                thumb = pygame.Surface((button_width, button_height), pygame.SRCALPHA)
+                thumb.fill((0, 0, 0, 0))  
+                thumb.blit(enlarged, (0, 0), (start_x_crop, start_y_crop, button_width, button_height))
+            
+            elif category == "Pants":
+                
+                zoom_factor_pants = 0.3
+                enlarged = pygame.transform.scale(item['image'], 
+                    (int(w * zoom_factor_pants), int(h * zoom_factor_pants)))
+                
+                ew, eh = enlarged.get_size()
+                
+                start_x_crop = max(0, (ew - button_width) // 2)
+                start_y_crop = max(0, eh - button_height)
+                
+                
+                thumb = pygame.Surface((button_width, button_height), pygame.SRCALPHA)
+                thumb.fill((0, 0, 0, 0))  
+                thumb.blit(enlarged, (0, 0), (start_x_crop, start_y_crop, button_width, button_height))
+            
             else:
                 thumb = item["thumb"]
+
 
             row = i // 3
             col = i % 3
@@ -325,11 +374,23 @@ def main_game(player_name):
             x_btn = start_x + col * (button_width + margin_x)
             y_btn = base_y + row * (button_height + margin_y)
 
+            is_selected = False
+            if category == "Hairs" and hairs_index is not None and i == hairs_index:
+                is_selected = True
+            elif category == "Dresses" and dresses_index is not None and i == dresses_index:
+                is_selected = True
+            elif category == "Shoes"  and shoes_index is not None and i == shoes_index:
+                is_selected = True
+            elif category == "Tops"  and tops_index is not None and i == tops_index:
+                is_selected = True
+            elif category == "Pants"  and pants_index is not None and i == pants_index:
+                is_selected = True
+
             cloth_buttons.append(
                 {
                     "rect": pygame.Rect(x_btn, y_btn, button_width, button_height),
                     "index": i,
-                    "selected": False,
+                    "selected": is_selected,
                     "category": category,
                     "thumb": thumb,
                     "name": item["name"],
@@ -355,7 +416,7 @@ def main_game(player_name):
             pygame.draw.rect(screen, color, btn["rect"])
             pygame.draw.rect(screen, (0, 0, 0), btn["rect"], border_width)
 
-            font = pygame.font.Font(None, 24)
+            font = pygame.font.Font(None, 22)
             text = font.render(btn["category"], True, (0, 0, 0))
             text_rect = text.get_rect(center=btn["rect"].center)
             screen.blit(text, text_rect)
@@ -370,44 +431,112 @@ def main_game(player_name):
 
     def handle_click(pos):
         nonlocal current_category, cloth_buttons
-        nonlocal clothes_index, hair_index, shoes_index, top_index, pants_index
-        nonlocal clothing_mode
+        nonlocal dresses_index, hairs_index, shoes_index, tops_index, pants_index
+        nonlocal tip_text, tip_timer
 
         # category buttons
         for btn in category_buttons:
             if btn["rect"].collidepoint(pos):
                 if btn["category"] != current_category:
                     current_category = btn["category"]
+                    
                     for b in category_buttons:
                         b["selected"] = (b["category"] == current_category)
+                    
                     cloth_buttons = create_cloth_buttons(current_category)
                 return
 
-        # item buttons
+        # cloth buttons
         for btn in cloth_buttons:
             if btn["rect"].collidepoint(pos):
-                for b in cloth_buttons:
-                    b["selected"] = False
-                btn["selected"] = True
+                
+                #conflict logic
+                clicked_category = btn['category']
+                clicked_index = btn['index']
+                print(f"now state - dresses:{dresses_index}, tops:{tops_index}, pants:{pants_index}")
+                
+                
+                # take off logic
+                is_already_selected = False
+                if clicked_category == "Hairs" and hairs_index is not None and clicked_index == hairs_index:
+                    is_already_selected = True
+                elif clicked_category == "Dresses" and dresses_index is not None and clicked_index == dresses_index:
+                    is_already_selected = True
+                elif clicked_category == "Tops" and tops_index is not None and clicked_index == tops_index:
+                    is_already_selected = True
+                elif clicked_category == "Pants" and pants_index is not None and clicked_index == pants_index:
+                    is_already_selected = True
+                elif clicked_category == "Shoes" and shoes_index is not None and clicked_index == shoes_index:
+                    is_already_selected = True
 
-                # IMPORTANT: switching logic
-                if current_category == "Hairs":
-                    hair_index = btn["index"]
 
-                elif current_category == "Cloth":
-                    clothes_index = btn["index"]
-                    clothing_mode = "outfit"      # outfits ON, top/pants OFF
+                if is_already_selected:
+                    if clicked_category == "Hairs":
+                        hairs_index = None
+                    elif clicked_category == "Shoes":
+                        shoes_index = None
+                    elif clicked_category == "Tops":
+                        tops_index = None
+                    elif clicked_category == "Pants":
+                        pants_index = None
+                    elif clicked_category == "Dresses":
+                        dresses_index = None
 
-                elif current_category == "Tops":
-                    top_index = btn["index"]
-                    clothing_mode = "separates"   # top/pants ON, outfit OFF
+                    cloth_buttons = create_cloth_buttons(current_category)
+                    
+                    tip_text = f"take off {clicked_category}"
+                    tip_timer = 60
+                    tip_color = (255, 255, 255)
+                    return
+                
+                conflict = False
+                wearing_tops = tops_index is not None
+                wearing_pants = pants_index is not None
+                wearing_dresses = dresses_index is not None
 
-                elif current_category == "Pants":
-                    pants_index = btn["index"]
-                    clothing_mode = "separates"   # top/pants ON, outfit OFF
 
-                elif current_category == "Shoes":
-                    shoes_index = btn["index"]
+                if clicked_category == "Tops" and wearing_dresses:
+                    tip_text = "not seamtime"
+                    tip_timer = 120
+                    tip_color = (255, 100, 100)
+                    conflict = True
+                    print(f"stop: {tip_text}")
+
+                if clicked_category == "Pants" and wearing_dresses:
+                    tip_text = "not seamtime"
+                    tip_timer = 120
+                    tip_color = (255, 100, 100)
+                    conflict = True
+                    print(f"stop: {tip_text}")
+                
+                if clicked_category == "Dresses" and (wearing_tops or wearing_pants):
+                    tip_text = "not seamtime"
+                    tip_timer = 120
+                    tip_color = (255, 100, 100)
+                    conflict = True
+                    print(f"stop: {tip_text}")
+                    
+                if conflict:
+                    return
+
+
+
+                if clicked_category  == "Hairs":
+                    hairs_index = clicked_index
+
+                elif clicked_category  == "Dresses":
+                    dresses_index = clicked_index
+
+                elif clicked_category  == "Tops":
+                    tops_index = clicked_index
+
+                elif clicked_category  == "Pants":
+                    pants_index = clicked_index
+
+                elif clicked_category  == "Shoes":
+                    shoes_index = clicked_index
+                
+                cloth_buttons = create_cloth_buttons(current_category)
 
                 return
 
@@ -432,42 +561,29 @@ def main_game(player_name):
             screen.fill((180, 200, 255))
 
         # Draw closet & buttons
-        draw_wardrobe()
+        draw_closet()
         draw_category_buttons()
         draw_cloth_buttons()
 
-        # Clamp indices safely
-        hair_index = min(hair_index, len(hairs) - 1) if hairs else 0
-        clothes_index = min(clothes_index, len(clothes) - 1) if clothes else 0
-        top_index = min(top_index, len(tops) - 1) if tops else 0
-        pants_index = min(pants_index, len(pants) - 1) if pants else 0
-        shoes_index = min(shoes_index, len(shoes) - 1) if shoes else 0
-
         # Draw character layers
         screen.blit(body, (x, y))
-
-        # ✅ KEY CHANGE: draw EITHER clothes OR top+pants (never both)
-        if clothing_mode == "outfit":
-            if clothes:
-                screen.blit(clothes[clothes_index], (x, y))
-        else:  # separates
-            if pants:
-                screen.blit(pants[pants_index], (x, y))
-            if tops:
-                screen.blit(tops[top_index], (x, y))
-
-        if shoes:
+        if hairs_index is not None and hairs and 0 <= hairs_index < len(hairs):
+            screen.blit(hairs[hairs_index], (x, y))
+        if dresses_index is not None and dresses and 0 <= dresses_index < len(dresses):
+            screen.blit(dresses[dresses_index], (x, y))
+        if tops_index is not None and tops and 0 <= tops_index < len(tops):
+            screen.blit(tops[tops_index], (x, y))
+        if pants_index is not None and pants and 0 <= pants_index < len(pants):
+            screen.blit(pants[pants_index], (x, y))
+        if shoes_index is not None and shoes and 0 <= shoes_index < len(shoes):
             screen.blit(shoes[shoes_index], (x, y))
-
-        if hairs:
-            screen.blit(hairs[hair_index], (x, y))
 
         # Special messages
         special = None
-        if hair_index == 1:
+        if hairs_index == 1:
             draw_glow_text_topright("Awesome ✨")
             special = "h2"
-        elif hair_index == 3:
+        elif hairs_index == 3:
             message = f"Now I am ready to party, {player_name}!"
             draw_glow_text_topright(message)
             special = "h4"
@@ -476,6 +592,27 @@ def main_game(player_name):
             play(sparkle_sound)
         last_special = special
 
+        if tip_timer > 0:
+            
+            tip_bg = pygame.Surface((400, 50))
+            tip_bg.set_alpha(200)
+            tip_bg.fill((40, 40, 40))
+            screen.blit(tip_bg, (WIDTH//2 - 200, 100))
+
+            if tip_text.startswith("take off"):
+                color = (255, 255, 255)  
+            else:
+                color = tip_color  
+        
+            pygame.draw.rect(screen, color, (WIDTH//2 - 200, 100, 400, 50), 3, border_radius=10)
+            
+            font = pygame.font.Font(None, 32)
+            tip_surface = font.render(tip_text, True, color)
+            tip_rect = tip_surface.get_rect(center=(WIDTH//2, 125))
+            screen.blit(tip_surface, tip_rect)
+            
+            tip_timer -= 1
+        
         pygame.display.flip()
         clock.tick(60)
 
