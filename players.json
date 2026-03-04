@@ -1,0 +1,44 @@
+{
+  "players": [
+    {
+      "id": "32ae9303cd7a4236b996312914a9f517",
+      "name": "Abi",
+      "outfits": [
+        {
+          "name": "Outfit_1",
+          "hair": 1,
+          "dress": null,
+          "top": 0,
+          "pants": 1,
+          "shoes": 1,
+          "background": 0
+        },
+        {
+          "name": "Outfit 2",
+          "hair": 0,
+          "dress": 0,
+          "top": null,
+          "pants": null,
+          "shoes": 2,
+          "background": 0
+        }
+      ]
+    },
+    {
+      "id": "dbef50d1fd094703b8ee969ec397947c",
+      "name": "Elgin",
+      "outfits": []
+    },
+    {
+      "id": "b8d3b8fabecd475995fb771b02049667",
+      "name": "Olivia",
+      "outfits": []
+    },
+    {
+      "id": "747bd807980a447d8cc225c1b2457508",
+      "name": "abi_1",
+      "outfits": []
+    }
+  ],
+  "selected_id": "dbef50d1fd094703b8ee969ec397947c"
+}

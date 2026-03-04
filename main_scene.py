@@ -3,10 +3,10 @@ import sys
 import random
 import re
 from pathlib import Path
+import json
 
 pygame.init()
 
-#testelgin
 # -----------------------------
 # Window
 # -----------------------------
@@ -99,54 +99,46 @@ def draw_button(rect, label):
     screen.blit(text, text.get_rect(center=rect.center))
 
 
-# ============================================================
-# NAME INPUT SCREEN
-# ============================================================
-def get_player_name():
-    name = ""
-    input_box = pygame.Rect(220, 260, 360, 44)
-    start_btn = pygame.Rect(330, 330, 140, 40)
+#=============================================================
+# Saving the outfit
+#=============================================================
+SAVE_FILE = Path(__file__).parent / "players.json"
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+def save_outfit_to_file(player_id: str, outfit: dict):
+    data = {"players": [], "selected_id": None}
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    return name if name else "Player"
-                elif event.key == pygame.K_BACKSPACE:
-                    name = name[:-1]
-                else:
-                    if len(name) < 16 and event.unicode.isprintable():
-                        name += event.unicode
+    if SAVE_FILE.exists():
+        try:
+            with open(SAVE_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    data.update(loaded)
+        except: 
+            pass
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if start_btn.collidepoint(event.pos):
-                    return name if name else "Player"
+    players = data.get("players", [])
+    target = None
+    for p in players:
+        if p.get("id") == player_id:
+            target = p
+            break
 
-        screen.fill((180, 200, 255))
+    if target is None:
+        target = {"id": player_id, "name":"Unknown","outfits":[]}
+        players.append(target)
 
-        title = title_font.render("Enter Your Name", True, TEXT)
-        screen.blit(title, title.get_rect(center=(WIDTH // 2, 150)))
+    target.setdefault("outfits", []).append(outfit)
+    data["players"] = players
 
-        pygame.draw.rect(screen, (255, 255, 255), input_box, border_radius=10)
-        pygame.draw.rect(screen, (0, 0, 0), input_box, 2, border_radius=10)
+    with open(SAVE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-        name_text = ui_font.render(name, True, TEXT)
-        screen.blit(name_text, (input_box.x + 10, input_box.y + 10))
-
-        draw_button(start_btn, "Start")
-
-        pygame.display.flip()
-        clock.tick(60)
 
 
 # ============================================================
 # MAIN GAME
 # ============================================================
-def main_game(player_name):
+def main_game(player, preset_outfit=None):
     body = pygame.image.load(ASSETS / "body.png").convert_alpha()
 
     # Auto-load base lists (used for rendering safety)
@@ -156,6 +148,23 @@ def main_game(player_name):
     pants = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("pants*.png"))]
     shoes = [pygame.image.load(p).convert_alpha() for p in sorted(ASSETS.glob("shoes*.png"))]
     backgrounds = [pygame.image.load(p).convert() for p in sorted(ASSETS.glob("background*.png"))]
+
+    # Save feature
+    save_popup = False
+    outfit_name_text = ""
+    save_panel = pygame.Rect(WIDTH//2 - 220, HEIGHT//2 - 120, 440, 240)
+    save_input = pygame.Rect(save_panel.left + 30, save_panel.top + 70, save_panel.width - 60, 45)
+    btn_save = pygame.Rect(WIDTH - 140, HEIGHT - 60, 120, 40)
+    btn_save_ok = pygame.Rect(save_panel.left + 30, save_panel.bottom - 60, 140, 40)
+    btn_save_cancel = pygame.Rect(save_panel.right - 170, save_panel.bottom - 60, 140, 40)
+
+    # Pause menu
+    paused = False
+    btn_pause = pygame.Rect(15, 15, 55, 45)
+    pause_panel = pygame.Rect(WIDTH//2 - 200, HEIGHT//2 - 150, 400, 300)
+    btn_resume = pygame.Rect(pause_panel.left + 40, pause_panel.top + 90, 320, 45)
+    btn_main_menu = pygame.Rect(pause_panel.left + 40, pause_panel.top + 150, 320, 45)
+    btn_exit_game = pygame.Rect(pause_panel.left + 40, pause_panel.top + 210, 320, 45)
 
     # Character position
     x = (WIDTH - 100) // 2
@@ -167,6 +176,21 @@ def main_game(player_name):
     pants_index = None
     shoes_index = None
     bg_index = 0
+
+    if preset_outfit:
+        hairs_index = preset_outfit.get("hair")
+        dresses_index = preset_outfit.get("dress")
+        tops_index = preset_outfit.get("top")
+        pants_index = preset_outfit.get("pants")
+        shoes_index = preset_outfit.get("shoes")
+        bg_index = preset_outfit.get("background", 0)
+        # Safety: clamp invalid indices to None/ 0
+        if hairs_index is not None and not (0 <= hairs_index < len(hairs)): hairs_index = None
+        if dresses_index is not None and not (0 <= dresses_index < len(dresses)): dresses_index = None
+        if tops_index is not None and not (0 <= tops_index < len(tops)): tops_index = None
+        if pants_index is not None and not (0 <= pants_index < len(pants)): pants_index = None
+        if shoes_index is not None and not (0 <= shoes_index < len(shoes)): shoes_index = None
+        if not (0 <= bg_index < len(backgrounds)): bg_index = 0
 
     ''''
     # Clothing mode:
@@ -268,11 +292,11 @@ def main_game(player_name):
 
     cloth_buttons = []
     max_scroll = 0
-    view_reat = pygame.Rect(20, 80, 350, 450)
+    view_rect = pygame.Rect(20, 80, 350, 450)
 
     # closet background
     def draw_closet():
-        rect = view_reat
+        rect = view_rect
         bg_surface = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
         transparency = 100
         bg_color = (245, 245, 250, transparency)
@@ -552,7 +576,85 @@ def main_game(player_name):
                 running = False
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Save_poup buttons
+                if save_popup:
+                    if btn_save_ok.collidepoint(event.pos):
+                        outfit_name = outfit_name_text.strip()
+
+                        if outfit_name != "":
+                            # Build a outfit dictionary
+                            outfit = {
+                                "name": outfit_name,
+                                "hair": hairs_index,
+                                "dress": dresses_index,
+                                "top": tops_index,
+                                "pants": pants_index,
+                                "shoes": shoes_index,
+                                "background": bg_index
+                            }
+                            save_outfit_to_file(player["id"], outfit)
+                        save_popup = False
+                        outfit_name_text = ""
+                    elif btn_save_cancel.collidepoint(event.pos):
+                        save_popup = False
+                        outfit_name_text = ""
+                    continue
+                # Pause menu buttons
+                if paused:
+                    if btn_resume.collidepoint(event.pos):
+                        paused = False
+                        continue
+                    if btn_main_menu.collidepoint(event.pos):
+                        return "start menu"
+                    if btn_exit_game.collidepoint(event.pos):
+                        return "quit"
+                    continue
+
                 handle_click(event.pos)
+
+                # Pause menu
+                if btn_pause.collidepoint(event.pos) and not save_popup:
+                    paused = True
+                    continue
+                # Save_popup
+                if btn_save.collidepoint(event.pos):
+                    save_popup = True
+                    outfit_name_text =""
+
+            # Keyboard navigations
+            if event.type == pygame.KEYDOWN:
+                # Save popup
+                if save_popup:
+                    if event.key == pygame.K_BACKSPACE:
+                        outfit_name_text = outfit_name_text[:-1]
+                    elif event.key == pygame.K_RETURN:
+                        outfit_name = outfit_name_text.strip()
+                        if outfit_name!="":
+                            outfit = {
+                                "name": outfit_name,
+                                "hair": hairs_index,
+                                "dress": dresses_index,
+                                "top": tops_index,
+                                "pants": pants_index,
+                                "shoes": shoes_index,
+                                "background": bg_index
+                            }
+                            save_outfit_to_file(player["id"], outfit)
+                        save_popup = False
+                        outfit_name_text = ""
+                    else:
+                        if len(outfit_name_text) < 20 and event.unicode.isprintable():
+                            outfit_name_text += event.unicode
+                #Escape key
+                if event.key == pygame.K_ESCAPE:
+                    if save_popup:
+                        save_popup = False
+                        outfit_name_text = ""
+                    elif paused:
+                        paused = False
+                    else:
+                        paused = True
+                    continue
 
         # Draw background
         if backgrounds:
@@ -584,7 +686,7 @@ def main_game(player_name):
             draw_glow_text_topright("Awesome ✨")
             special = "h2"
         elif hairs_index == 3:
-            message = f"Now I am ready to party, {player_name}!"
+            message = f"Now I am ready to party, {player['name']}!"
             draw_glow_text_topright(message)
             special = "h4"
 
@@ -612,16 +714,61 @@ def main_game(player_name):
             screen.blit(tip_surface, tip_rect)
             
             tip_timer -= 1
+
+        # Darw save button
+        pygame.draw.rect(screen, (245, 245, 245), btn_save, border_radius = 8)
+        pygame.draw.rect(screen, (0, 0, 0), btn_save, 2, border_radius = 8)
+        txt = ui_font.render("Save", True, (0, 0, 0))
+        screen.blit(txt,txt.get_rect(center = btn_save.center))
+
+        # Darw save_popup
+        if save_popup:
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 120))
+            screen.blit(overlay,(0,0))
+
+            pygame.draw.rect(screen, (255, 255, 255), save_panel, border_radius = 12)
+            pygame.draw.rect(screen, (0, 0, 0), save_panel, 2, border_radius = 12)
+            label = ui_font.render("Name your outfit:", True, (0, 0, 0))
+            screen.blit(label, (save_panel.left + 30, save_panel.top + 30))
+
+            pygame.draw.rect(screen, (255, 255, 255), save_input, border_radius = 10)
+            pygame.draw.rect(screen, (0, 0, 0), save_input, 2, border_radius = 10)
+            typed = ui_font.render(outfit_name_text, True, (0, 0, 0))
+            screen.blit(typed, (save_input.x + 10, save_input.y + 10))
+
+            pygame.draw.rect(screen, (245, 245, 245), btn_save_ok, border_radius = 8)
+            pygame.draw.rect(screen, (0, 0, 0), btn_save_ok, 2, border_radius = 8)
+            ok_txt = ui_font.render("OK", True, (0, 0, 0))
+            screen.blit(ok_txt, ok_txt.get_rect(center=btn_save_ok.center))
+
+            pygame.draw.rect(screen, (245, 245, 245), btn_save_cancel, border_radius = 8)
+            pygame.draw.rect(screen, (0, 0, 0), btn_save_cancel, 2, border_radius = 8)
+            cancel_txt = ui_font.render("Cancel", True, (0, 0, 0))
+            screen.blit(cancel_txt, cancel_txt.get_rect(center=btn_save_cancel.center))
+
+        # Darw pause menu button
+        pygame.draw.rect(screen, (245, 245, 245), btn_pause, border_radius = 8)
+        pygame.draw.rect(screen, (0, 0, 0), btn_pause, 2, border_radius = 8)
+        pause_txt = ui_font.render("Menu", True, (0,0,0))
+        screen.blit(pause_txt, pause_txt.get_rect(center = btn_pause.center))
+
+        # Draw pause menu panel
+        if paused:
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 140))
+            screen.blit(overlay,(0,0))
+
+            pygame.draw.rect(screen, (255, 255, 255), pause_panel, border_radius = 14)
+            pygame.draw.rect(screen, (0, 0, 0), pause_panel, 2, border_radius = 14)
+
+            title = title_font.render("Menu", True, (0, 0, 0))
+            screen.blit(title, title.get_rect(center = (pause_panel.centerx, pause_panel.top + 45)))
+
+            draw_button(btn_resume, "Resume")
+            draw_button(btn_main_menu, "Main Menu")
+            draw_button(btn_exit_game, "Exit Game")
         
         pygame.display.flip()
         clock.tick(60)
-
-
-# ============================================================
-# RUN
-# ============================================================
-if __name__ == "__main__":
-    name = get_player_name()
-    main_game(name)
-    pygame.quit()
-    sys.exit()
+    return "quit"
