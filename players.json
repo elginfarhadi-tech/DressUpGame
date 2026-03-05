@@ -21,6 +21,15 @@
           "pants": null,
           "shoes": 2,
           "background": 0
+        },
+        {
+          "name": "123",
+          "hair": 1,
+          "dress": null,
+          "top": 0,
+          "pants": 0,
+          "shoes": 1,
+          "background": 0
         }
       ]
     },
@@ -40,5 +49,5 @@
       "outfits": []
     }
   ],
-  "selected_id": "dbef50d1fd094703b8ee969ec397947c"
+  "selected_id": "32ae9303cd7a4236b996312914a9f517"
 }

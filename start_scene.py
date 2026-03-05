@@ -196,6 +196,12 @@ while running:
                     # Loading the main game
                     result = main_game(selected_player)
                     if result == "start menu":
+                        players, selected_player = load_players()
+
+                        # Reset archive selection safely
+                        outfits = selected_player.get("outfits", []) if selected_player else []
+                        archive_selected_index = 0 if outfits else None
+                        # UI clean up
                         start_popup = None
                         renaming = False
                         rename_text = ""
@@ -289,6 +295,12 @@ while running:
                         outfit_to_load = outfits[archive_selected_index]
                         result = main_game(selected_player, outfit_to_load)
                         if result == "start menu":
+                            players, selected_player = load_players()
+    
+                            # Reset archive selection safely
+                            outfits = selected_player.get("outfits", []) if selected_player else []
+                            archive_selected_index = 0 if outfits else None
+                            # UI clean up
                             start_popup = None
                             renaming = False
                             rename_text = ""
