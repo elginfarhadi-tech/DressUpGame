@@ -177,6 +177,28 @@ def main_game(player, preset_outfit=None):
     shoes_index = None
     bg_index = 0
 
+    # Tracking unsaved changes
+    unsaved_popup = False
+    pending_exit_action = None
+    
+    unsaved_panel = pygame.Rect(WIDTH//2 - 230, HEIGHT//2 - 130, 460, 260)
+    btn_unsaved_save = pygame.Rect(unsaved_panel.left + 30, unsaved_panel.bottom - 70, 120, 45)
+    btn_unsaved_no = pygame.Rect(unsaved_panel.left + 155, unsaved_panel.bottom - 70, 150, 45)
+    btn_unsaved_cancel = pygame.Rect(unsaved_panel.right - 150, unsaved_panel.bottom - 70, 120, 45)
+
+    def current_state():
+        return{
+            "hair": hairs_index,
+            "dress": dresses_index,
+            "top": tops_index,
+            "pants": pants_index,
+            "shoes": shoes_index,
+            "background": bg_index,
+        }
+    
+    last_saved_state = current_state()
+    dirty = False
+
     if preset_outfit:
         hairs_index = preset_outfit.get("hair")
         dresses_index = preset_outfit.get("dress")
@@ -191,6 +213,20 @@ def main_game(player, preset_outfit=None):
         if pants_index is not None and not (0 <= pants_index < len(pants)): pants_index = None
         if shoes_index is not None and not (0 <= shoes_index < len(shoes)): shoes_index = None
         if not (0 <= bg_index < len(backgrounds)): bg_index = 0
+
+        last_saved_state = current_state()
+        dirty = False
+
+    def request_exit(action):
+        nonlocal unsaved_popup, pending_exit_action
+        if dirty:
+            unsaved_popup = True
+            pending_exit_action = action
+            return None
+        else:
+            return action
+        
+
 
     ''''
     # Clothing mode:
@@ -457,6 +493,7 @@ def main_game(player, preset_outfit=None):
         nonlocal current_category, cloth_buttons
         nonlocal dresses_index, hairs_index, shoes_index, tops_index, pants_index
         nonlocal tip_text, tip_timer
+        nonlocal dirty
 
         # category buttons
         for btn in category_buttons:
@@ -468,6 +505,7 @@ def main_game(player, preset_outfit=None):
                         b["selected"] = (b["category"] == current_category)
                     
                     cloth_buttons = create_cloth_buttons(current_category)
+
                 return
 
         # cloth buttons
@@ -511,6 +549,7 @@ def main_game(player, preset_outfit=None):
                     tip_text = f"take off {clicked_category}"
                     tip_timer = 60
                     tip_color = (255, 255, 255)
+                    dirty = (current_state() != last_saved_state)
                     return
                 
                 conflict = False
@@ -561,7 +600,7 @@ def main_game(player, preset_outfit=None):
                     shoes_index = clicked_index
                 
                 cloth_buttons = create_cloth_buttons(current_category)
-
+                dirty = (current_state() != last_saved_state)
                 return
 
     # create buttons
@@ -573,9 +612,27 @@ def main_game(player, preset_outfit=None):
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                res = request_exit("quit")
+                if res:
+                    return "quit"
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Unsaved_popup buttons
+                if unsaved_popup:
+                    if btn_unsaved_save.collidepoint(event.pos):
+                        save_popup = True
+                        unsaved_popup = False
+                        continue
+                    if btn_unsaved_no.collidepoint(event.pos):
+                        if pending_exit_action == "start menu":
+                            return "start menu"
+                        if pending_exit_action == "quit":
+                            return "quit"
+                    if btn_unsaved_cancel.collidepoint(event.pos):
+                        unsaved_popup = False
+                        pending_exit_action = None
+                        continue
+                    continue
                 # Save_poup buttons
                 if save_popup:
                     if btn_save_ok.collidepoint(event.pos):
@@ -593,6 +650,12 @@ def main_game(player, preset_outfit=None):
                                 "background": bg_index
                             }
                             save_outfit_to_file(player["id"], outfit)
+                            last_saved_state = current_state()
+                            dirty =False
+                            if pending_exit_action == "start menu":
+                                return "start menu"
+                            elif pending_exit_action == "quit":
+                                return "quit"
                         save_popup = False
                         outfit_name_text = ""
                     elif btn_save_cancel.collidepoint(event.pos):
@@ -605,9 +668,13 @@ def main_game(player, preset_outfit=None):
                         paused = False
                         continue
                     if btn_main_menu.collidepoint(event.pos):
-                        return "start menu"
+                        res = request_exit("start menu")
+                        if res: 
+                            return "start menu"
                     if btn_exit_game.collidepoint(event.pos):
-                        return "quit"
+                        res = request_exit("quit")
+                        if res:
+                            return "quit"
                     continue
 
                 handle_click(event.pos)
@@ -623,6 +690,12 @@ def main_game(player, preset_outfit=None):
 
             # Keyboard navigations
             if event.type == pygame.KEYDOWN:
+                # Unsaved_popup
+                if unsaved_popup:
+                    if event.key == pygame.K_ESCAPE:
+                        unsaved_popup = False
+                        pending_exit_action = None
+                    continue
                 # Save popup
                 if save_popup:
                     if event.key == pygame.K_BACKSPACE:
@@ -769,6 +842,22 @@ def main_game(player, preset_outfit=None):
             draw_button(btn_main_menu, "Main Menu")
             draw_button(btn_exit_game, "Exit Game")
         
+        # Draw save check in panel
+        if unsaved_popup :
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 140))
+            screen.blit(overlay, (0, 0))
+
+            pygame.draw.rect(screen, (255, 255, 255), unsaved_panel, border_radius = 14)
+            pygame.draw.rect(screen, (0, 0, 0), unsaved_panel, 2, border_radius = 14)
+
+            msg = ui_font.render("Save before leaving?", True, (0, 0, 0))
+            screen.blit(msg, msg.get_rect(center = (unsaved_panel.centerx, unsaved_panel.top + 95)))
+
+            draw_button(btn_unsaved_save, "Save")
+            draw_button(btn_unsaved_no, "Don't Save")
+            draw_button(btn_unsaved_cancel, "Cancel")
+
         pygame.display.flip()
         clock.tick(60)
     return "quit"

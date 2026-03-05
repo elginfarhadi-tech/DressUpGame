@@ -205,7 +205,6 @@ while running:
                         start_popup = None
                         renaming = False
                         rename_text = ""
-                        archive_selected_index = None
                         archive_renaming = False
                         archive_rename_text = ""
                         continue
@@ -248,7 +247,7 @@ while running:
                     archive_selected_index = None
                     archive_renaming = False
                     archive_rename_text = ""
-                    renaming = None
+                    renaming = False
                     rename_text = ""
                     continue
             
@@ -304,7 +303,6 @@ while running:
                             start_popup = None
                             renaming = False
                             rename_text = ""
-                            archive_selected_index = None
                             archive_renaming = False
                             archive_rename_text = ""
                             continue
