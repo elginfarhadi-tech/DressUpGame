@@ -4,6 +4,7 @@ import random
 import re
 from pathlib import Path
 import json
+import uuid
 
 pygame.init()
 
@@ -127,9 +128,23 @@ def save_outfit_to_file(player_id: str, outfit: dict):
         target = {"id": player_id, "name":"Unknown","outfits":[]}
         players.append(target)
 
-    target.setdefault("outfits", []).append(outfit)
-    data["players"] = players
+    outfits = target.setdefault("outfits",[])
+    incoming_id = outfit.get("outfit_id")
 
+    if incoming_id:
+        existing = next((o for o in outfits if o.get("outfit_id") == incoming_id), None)
+        if existing:
+            keep_name = existing.get("name")
+            existing.clear()
+            existing.update(outfit)
+            existing["name"] = keep_name
+        else:
+            outfits.append(outfit)
+    else:
+        outfits.append(outfit)
+
+    data["players"] = players
+    
     with open(SAVE_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -151,12 +166,17 @@ def main_game(player, preset_outfit=None):
 
     # Save feature
     save_popup = False
+    overwrite_popup = False
     outfit_name_text = ""
     save_panel = pygame.Rect(WIDTH//2 - 220, HEIGHT//2 - 120, 440, 240)
     save_input = pygame.Rect(save_panel.left + 30, save_panel.top + 70, save_panel.width - 60, 45)
     btn_save = pygame.Rect(WIDTH - 140, HEIGHT - 60, 120, 40)
     btn_save_ok = pygame.Rect(save_panel.left + 30, save_panel.bottom - 60, 140, 40)
     btn_save_cancel = pygame.Rect(save_panel.right - 170, save_panel.bottom - 60, 140, 40)
+    overwrite_panel = pygame.Rect(WIDTH//2 - 220, HEIGHT//2 - 110, 440, 220)
+    btn_overwrite = pygame.Rect(overwrite_panel.left + 30, overwrite_panel.bottom - 60, 120, 40)
+    btn_save_as_new = pygame.Rect(overwrite_panel.centerx - 70, overwrite_panel.bottom - 60, 140, 40)
+    btn_overwrite_cancel = pygame.Rect(overwrite_panel.right - 150, overwrite_panel.bottom - 60, 120, 40)
 
     # Pause menu
     paused = False
@@ -176,6 +196,10 @@ def main_game(player, preset_outfit=None):
     pants_index = None
     shoes_index = None
     bg_index = 0
+
+    # Tracking loaded outfit
+    current_outfit_id = None
+    current_outfit_name = None
 
     # Tracking unsaved changes
     unsaved_popup = False
@@ -213,6 +237,9 @@ def main_game(player, preset_outfit=None):
         if pants_index is not None and not (0 <= pants_index < len(pants)): pants_index = None
         if shoes_index is not None and not (0 <= shoes_index < len(shoes)): shoes_index = None
         if not (0 <= bg_index < len(backgrounds)): bg_index = 0
+
+        current_outfit_id = preset_outfit.get("outfit_id")
+        current_outfit_name = preset_outfit.get("name")
 
         last_saved_state = current_state()
         dirty = False
@@ -620,7 +647,11 @@ def main_game(player, preset_outfit=None):
                 # Unsaved_popup buttons
                 if unsaved_popup:
                     if btn_unsaved_save.collidepoint(event.pos):
-                        save_popup = True
+                        if current_outfit_id is not None:
+                            overwrite_popup = True
+                        else:
+                            save_popup = True
+                            outfit_name_text = ""
                         unsaved_popup = False
                         continue
                     if btn_unsaved_no.collidepoint(event.pos):
@@ -641,6 +672,7 @@ def main_game(player, preset_outfit=None):
                         if outfit_name != "":
                             # Build a outfit dictionary
                             outfit = {
+                                "outfit_id": current_outfit_id or uuid.uuid4().hex,
                                 "name": outfit_name,
                                 "hair": hairs_index,
                                 "dress": dresses_index,
@@ -652,15 +684,49 @@ def main_game(player, preset_outfit=None):
                             save_outfit_to_file(player["id"], outfit)
                             last_saved_state = current_state()
                             dirty =False
-                            if pending_exit_action == "start menu":
-                                return "start menu"
-                            elif pending_exit_action == "quit":
-                                return "quit"
+                        if pending_exit_action == "start menu":
+                            return "start menu"
+                        elif pending_exit_action == "quit":
+                            return "quit"
+                        current_outfit_id = outfit["outfit_id"]
+                        current_outfit_name = outfit["name"]
                         save_popup = False
                         outfit_name_text = ""
                     elif btn_save_cancel.collidepoint(event.pos):
                         save_popup = False
                         outfit_name_text = ""
+                    continue
+                # Overwrite_popup
+                if overwrite_popup:
+                    if btn_overwrite.collidepoint(event.pos):
+                        outfit = {
+                            "outfit_id": current_outfit_id,
+                            "name": current_outfit_name,
+                            "hair": hairs_index,
+                            "dress": dresses_index,
+                            "top": tops_index,
+                            "pants": pants_index,
+                            "shoes": shoes_index,
+                            "background": bg_index
+                        }
+                        save_outfit_to_file(player["id"], outfit)
+                        last_saved_state = current_state()
+                        dirty = False
+                        overwrite_popup = False
+                        if pending_exit_action == "start menu":
+                            return "start menu"
+                        elif pending_exit_action == "quit":
+                            return "quit"
+                        current_outfit_id = outfit["outfit_id"]
+                        current_outfit_name = outfit["name"]
+                    elif btn_save_as_new.collidepoint(event.pos):
+                        overwrite_popup = False
+                        current_outfit_id = None
+                        current_outfit_name = None
+                        save_popup = True
+                        outfit_name_text = ""
+                    elif btn_overwrite_cancel.collidepoint(event.pos):
+                        overwrite_popup = False
                     continue
                 # Pause menu buttons
                 if paused:
@@ -676,17 +742,20 @@ def main_game(player, preset_outfit=None):
                         if res:
                             return "quit"
                     continue
-
-                handle_click(event.pos)
-
                 # Pause menu
                 if btn_pause.collidepoint(event.pos) and not save_popup:
                     paused = True
                     continue
                 # Save_popup
                 if btn_save.collidepoint(event.pos):
-                    save_popup = True
-                    outfit_name_text =""
+                    if current_outfit_id is not None:
+                        overwrite_popup = True
+                    else:
+                        save_popup = True
+                        outfit_name_text = ""
+                    continue
+
+                handle_click(event.pos)
 
             # Keyboard navigations
             if event.type == pygame.KEYDOWN:
@@ -702,8 +771,11 @@ def main_game(player, preset_outfit=None):
                         outfit_name_text = outfit_name_text[:-1]
                     elif event.key == pygame.K_RETURN:
                         outfit_name = outfit_name_text.strip()
-                        if outfit_name!="":
+
+                        if outfit_name != "":
+                            # Build a outfit dictionary
                             outfit = {
+                                "outfit_id": current_outfit_id or uuid.uuid4().hex,
                                 "name": outfit_name,
                                 "hair": hairs_index,
                                 "dress": dresses_index,
@@ -713,11 +785,20 @@ def main_game(player, preset_outfit=None):
                                 "background": bg_index
                             }
                             save_outfit_to_file(player["id"], outfit)
+                            last_saved_state = current_state()
+                            dirty =False
+                        if pending_exit_action == "start menu":
+                            return "start menu"
+                        elif pending_exit_action == "quit":
+                            return "quit"
+                        current_outfit_id = outfit["outfit_id"]
+                        current_outfit_name = outfit["name"]
                         save_popup = False
                         outfit_name_text = ""
                     else:
                         if len(outfit_name_text) < 20 and event.unicode.isprintable():
                             outfit_name_text += event.unicode
+                    continue
                 #Escape key
                 if event.key == pygame.K_ESCAPE:
                     if save_popup:
@@ -789,10 +870,23 @@ def main_game(player, preset_outfit=None):
             tip_timer -= 1
 
         # Darw save button
-        pygame.draw.rect(screen, (245, 245, 245), btn_save, border_radius = 8)
-        pygame.draw.rect(screen, (0, 0, 0), btn_save, 2, border_radius = 8)
-        txt = ui_font.render("Save", True, (0, 0, 0))
-        screen.blit(txt,txt.get_rect(center = btn_save.center))
+        draw_button(btn_save, "Save")
+
+        # Darw overwrite_popup
+        if overwrite_popup:
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 120))
+            screen.blit(overlay, (0,0))
+
+            pygame.draw.rect(screen, (255, 255, 255), overwrite_panel, border_radius = 12)
+            pygame.draw.rect(screen, (0, 0, 0), overwrite_panel, 2, border_radius = 12)
+
+            label = ui_font.render("Overwrite this saved outfit?", True, (0, 0, 0))
+            screen.blit(label, label.get_rect(center = (overwrite_panel.centerx, overwrite_panel.top + 75)))
+
+            draw_button(btn_overwrite, "Overwrite")
+            draw_button(btn_save_as_new, "Save as New")
+            draw_button(btn_overwrite_cancel, "Cancel")
 
         # Darw save_popup
         if save_popup:
@@ -807,27 +901,18 @@ def main_game(player, preset_outfit=None):
 
             pygame.draw.rect(screen, (255, 255, 255), save_input, border_radius = 10)
             pygame.draw.rect(screen, (0, 0, 0), save_input, 2, border_radius = 10)
+
             typed = ui_font.render(outfit_name_text, True, (0, 0, 0))
             screen.blit(typed, (save_input.x + 10, save_input.y + 10))
 
-            pygame.draw.rect(screen, (245, 245, 245), btn_save_ok, border_radius = 8)
-            pygame.draw.rect(screen, (0, 0, 0), btn_save_ok, 2, border_radius = 8)
-            ok_txt = ui_font.render("OK", True, (0, 0, 0))
-            screen.blit(ok_txt, ok_txt.get_rect(center=btn_save_ok.center))
-
-            pygame.draw.rect(screen, (245, 245, 245), btn_save_cancel, border_radius = 8)
-            pygame.draw.rect(screen, (0, 0, 0), btn_save_cancel, 2, border_radius = 8)
-            cancel_txt = ui_font.render("Cancel", True, (0, 0, 0))
-            screen.blit(cancel_txt, cancel_txt.get_rect(center=btn_save_cancel.center))
+            draw_button(btn_save_ok, "OK")
+            draw_button(btn_save_cancel, "Cancel")
 
         # Darw pause menu button
-        pygame.draw.rect(screen, (245, 245, 245), btn_pause, border_radius = 8)
-        pygame.draw.rect(screen, (0, 0, 0), btn_pause, 2, border_radius = 8)
-        pause_txt = ui_font.render("Menu", True, (0,0,0))
-        screen.blit(pause_txt, pause_txt.get_rect(center = btn_pause.center))
+        draw_button(btn_pause, "Menu")
 
         # Draw pause menu panel
-        if paused:
+        if paused and not save_popup and not overwrite_popup:
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 140))
             screen.blit(overlay,(0,0))
@@ -843,7 +928,7 @@ def main_game(player, preset_outfit=None):
             draw_button(btn_exit_game, "Exit Game")
         
         # Draw save check in panel
-        if unsaved_popup :
+        if unsaved_popup:
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 140))
             screen.blit(overlay, (0, 0))

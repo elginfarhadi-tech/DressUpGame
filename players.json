@@ -5,30 +5,43 @@
       "name": "Abi",
       "outfits": [
         {
-          "name": "Outfit_1",
+          "outfit_id": "8c33142320a74cfaa470c98131c3675a",
+          "name": "A",
           "hair": 1,
-          "dress": null,
-          "top": 0,
-          "pants": 1,
+          "dress": 1,
+          "top": null,
+          "pants": null,
           "shoes": 1,
           "background": 0
         },
         {
-          "name": "Outfit 2",
-          "hair": 0,
-          "dress": 0,
-          "top": null,
-          "pants": null,
+          "outfit_id": "286c7320bba74faa8db3f82ce1c58d08",
+          "name": "Abi",
+          "hair": 2,
+          "dress": null,
+          "top": 0,
+          "pants": 1,
           "shoes": 2,
           "background": 0
         },
         {
-          "name": "123",
-          "hair": 1,
+          "outfit_id": "8f3048c1a7b4405e8e43de4ea7b709f0",
+          "name": "Abi_1",
+          "hair": 4,
           "dress": null,
           "top": 0,
-          "pants": 0,
-          "shoes": 1,
+          "pants": 1,
+          "shoes": 2,
+          "background": 0
+        },
+        {
+          "outfit_id": "771292dc0dfd4dc4a12f3df4ae2740f5",
+          "name": "Abi_2",
+          "hair": 0,
+          "dress": null,
+          "top": 0,
+          "pants": 1,
+          "shoes": 2,
           "background": 0
         }
       ]

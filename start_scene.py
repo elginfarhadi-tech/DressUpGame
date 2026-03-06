@@ -292,6 +292,12 @@ while running:
                         0 <= archive_selected_index < len(selected_player.get("outfits", []))
                     ):
                         outfit_to_load = outfits[archive_selected_index]
+                        
+                        # Ensuring every outfit has a unique outfit
+                        if "outfit_id" not in outfit_to_load:
+                            outfit_to_load["outfit_id"] = uuid.uuid4().hex
+                            save_players(players, selected_player)
+
                         result = main_game(selected_player, outfit_to_load)
                         if result == "start menu":
                             players, selected_player = load_players()
