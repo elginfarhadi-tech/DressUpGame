@@ -2,7 +2,7 @@
   "players": [
     {
       "id": "32ae9303cd7a4236b996312914a9f517",
-      "name": "Abi",
+      "name": "Abishcline",
       "outfits": [
         {
           "outfit_id": "8c33142320a74cfaa470c98131c3675a",
@@ -23,33 +23,8 @@
           "pants": 1,
           "shoes": 2,
           "background": 0
-        },
-        {
-          "outfit_id": "8f3048c1a7b4405e8e43de4ea7b709f0",
-          "name": "Abi_1",
-          "hair": 4,
-          "dress": null,
-          "top": 0,
-          "pants": 1,
-          "shoes": 2,
-          "background": 0
-        },
-        {
-          "outfit_id": "771292dc0dfd4dc4a12f3df4ae2740f5",
-          "name": "Abi_2",
-          "hair": 0,
-          "dress": null,
-          "top": 0,
-          "pants": 1,
-          "shoes": 2,
-          "background": 0
         }
       ]
-    },
-    {
-      "id": "dbef50d1fd094703b8ee969ec397947c",
-      "name": "Elgin",
-      "outfits": []
     },
     {
       "id": "b8d3b8fabecd475995fb771b02049667",
@@ -58,8 +33,24 @@
     },
     {
       "id": "747bd807980a447d8cc225c1b2457508",
-      "name": "abi_1",
+      "name": "Elgin_Hi",
       "outfits": []
+    },
+    {
+      "id": "48db384effb94d60a9373db5f61e25ef",
+      "name": "Amelie",
+      "outfits": [
+        {
+          "outfit_id": "ee81a5ba2a044368ab0f64a56725ce16",
+          "name": "The BaNaNa",
+          "hair": 1,
+          "dress": null,
+          "top": 0,
+          "pants": 1,
+          "shoes": 2,
+          "background": 0
+        }
+      ]
     }
   ],
   "selected_id": "32ae9303cd7a4236b996312914a9f517"

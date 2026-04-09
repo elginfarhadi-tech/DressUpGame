@@ -47,8 +47,8 @@ def load_sound(name):
         return None
 
 
-click_sound = load_sound("click.wav")
-sparkle_sound = load_sound("sparkle.wav")
+click_sound = load_sound("click.mp3")
+sparkle_sound = load_sound("sparkle.mp3")
 
 
 def play(sound):
